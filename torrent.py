@@ -13,7 +13,7 @@ class Torrent(object):
         self.pieces: int = 0
         self.info_hash: str = ''
         self.peer_id: str = ''
-        self.announce_list = ''
+        self.announce_list = []
         self.file_names = []
         self.number_of_pieces: int = 0
     
@@ -27,7 +27,9 @@ class Torrent(object):
         raw_info_hash = bencode(self.torrent_file['info'])
         self.info_hash = hashlib.sha1(raw_info_hash).digest()
         self.peer_id = self.generate_peer_id()
-        self.announce_list = self.get_trakers()
+        raw_announce_list = self.get_trackers()
+        for tracker in raw_announce_list:
+            self.announce_list.append(tracker[0])
         self.init_files()
         self.number_of_pieces = math.ceil(self.total_length / self.piece_length)
 
@@ -56,7 +58,7 @@ class Torrent(object):
             self.file_names.append({"path": root , "length": self.torrent_file['info']['length']})
             self.total_length = self.torrent_file['info']['length']
 
-    def get_trakers(self):
+    def get_trackers(self):
         if 'announce-list' in self.torrent_file:
             return self.torrent_file['announce-list']
         else:
