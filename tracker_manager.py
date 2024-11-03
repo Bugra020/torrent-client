@@ -21,7 +21,8 @@ class TrackerManager(object):
                     case 'udp':
                         tracker_peers = self._get_udp_peer(url)
                     case 'htt':
-                        peers.append(self._get_http_peer(url))
+                        #peers.append(self._get_http_peer(url))
+                        pass
                     case _:
                         self._debug(f"{url} tracker url is not valid")
             except TimeoutError:
@@ -87,18 +88,18 @@ class TrackerManager(object):
                         raise ValueError("Invalid announce response")
 
                     # Parse the list of peers
-                    peers = self.parse_tracker_response(response[20:])
-                    self.debug(f"got the peers from {host} succesfully")
+                    peers = self._parse_tracker_response(response[20:])
+                    self._debug(f"got the peers from {host} succesfully")
                     return peers
-
+                except Exception as e:
+                    self._debug(f"{host} error occured : {e}")
                 finally:
                     sock.close()
 
             except TimeoutError:
                 self._debug(f"{host} Attempt {attempt + 1} timed out. Retrying...")
-            except:
-                self._debug(f"{host} error occured")
-                retries = 0
+            except Exception as e:
+                self._debug(f"{host} error occured : {e}")
 
         raise TimeoutError("Tracker did not respond after multiple attempts")
 
@@ -107,15 +108,11 @@ class TrackerManager(object):
 
     def _parse_tracker_response(self, response):
         peers = []
-        # Each peer entry is 6 bytes: 4 for IP, 2 for port
         for i in range(0, len(response), 6):
-            # Extract the IP address from the first 4 bytes
             ip_address = '.'.join(map(str, response[i:i+4]))
-            
-            # Extract the port from the last 2 bytes
+
             port = struct.unpack(">H", response[i+4:i+6])[0]
             
-            # Append the IP and port as a tuple to the list of peers
             peers.append((ip_address, port))
         
         return peers
