@@ -9,7 +9,6 @@ class Client(object):
         self.torrent_file = torrent.Torrent()
         self.peer_list = []
         self.tracker_manager = tracker_manager.TrackerManager(self.torrent_file, True)
-        self.peer_manager = peer_manager.PeerManager(True)
         self.debug_mode = debug_mode
     
     def _debug(self, msg):
@@ -20,6 +19,7 @@ class Client(object):
         self.torrent_file = self.torrent_file.load_from_path(torrent_path)
         self.peer_list = self.tracker_manager.get_peers()
         self._debug(self.peer_list)
+        self.peer_manager = peer_manager.PeerManager(True, self.torrent_file.info_hash, self.torrent_file.peer_id)
         asyncio.run(self.peer_manager.connect_peers(self.peer_list))
 
 
