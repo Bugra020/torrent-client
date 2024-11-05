@@ -1,6 +1,9 @@
 import struct
 import random
 import socket
+import requests # type: ignore
+import urllib.parse
+import bencodepy # type: ignore
 
 class TrackerManager(object):
     def __init__(self, torrent_file, debug_mode):
@@ -21,7 +24,7 @@ class TrackerManager(object):
                     case 'udp':
                         tracker_peers = self._get_udp_peer(url)
                     case 'htt':
-                        #peers.append(self._get_http_peer(url))
+                        tracker_peers = self._get_http_peer(url)
                         pass
                     case _:
                         self._debug(f"{url} tracker url is not valid")
@@ -103,16 +106,81 @@ class TrackerManager(object):
 
         raise TimeoutError("Tracker did not respond after multiple attempts")
 
+
     def _get_http_peer(self, url):
-        pass
+        if not url.startswith("https://"):
+            raise ValueError("URL must start with https://")
+        
+        transaction_id = random.randint(0, 0xFFFFFFFF)
+        
+        params = {
+            'info_hash': self.torrent_file.info_hash[:20],
+            'peer_id': self.torrent_file.peer_id[:20],
+            'port': 6881,
+            'uploaded': 0,
+            'downloaded': 0,
+            'left': self.torrent_file.total_length,
+            'compact': 1,  # Request compact peer list
+            'numwant': 50,  # Requesting up to 50 peers
+            'key': transaction_id,
+        }
+        
+        encoded_params = urllib.parse.urlencode(params, doseq=True)
+        full_url = f"{url}?{encoded_params}"
+        
+        retries = 1
+        for attempt in range(retries):
+            try:
+                response = requests.get(full_url, timeout=5)
+                
+                if response.status_code != 200:
+                    raise ValueError(f"Tracker responded with status code {response.status_code}")
+                
+                tracker_response = response.content
+                
+                peers = self._parse_tracker_response(tracker_response)
+                self._debug(f"Got peers from {url} successfully")
+                return peers
+
+            except requests.Timeout:
+                self._debug(f"{url} attempt {attempt + 1} timed out. Retrying...")
+            except Exception as e:
+                self._debug(f"Error occurred with {url}: {e}")
+        
+        raise TimeoutError("Tracker did not respond after multiple attempts")
+
 
     def _parse_tracker_response(self, response):
-        peers = []
-        for i in range(0, len(response), 6):
-            ip_address = '.'.join(map(str, response[i:i+4]))
+        try:
+            decoded_response = bencodepy.decode(response)
+        except Exception as e:
+            raise ValueError(f"Failed to decode tracker response: {e}")
 
-            port = struct.unpack(">H", response[i+4:i+6])[0]
-            
-            peers.append((ip_address, port))
-        
+        if b'peers' not in decoded_response:
+            raise ValueError("Tracker response does not contain 'peers'")
+
+        peers = []
+
+        if isinstance(decoded_response[b'peers'], bytes):
+            peers_data = decoded_response[b'peers']
+
+            if len(peers_data) % 6 != 0:
+                raise ValueError("Unexpected length of 'peers' data")
+
+            for i in range(0, len(peers_data), 6):
+                ip = peers_data[i:i+4]
+                port = peers_data[i+4:i+6]
+                ip_address = socket.inet_ntoa(ip)
+                port_number = struct.unpack(">H", port)[0]
+                peers.append((ip_address, port_number))
+
+        elif isinstance(decoded_response[b'peers'], list):
+            for peer in decoded_response[b'peers']:
+                ip_address = peer[b'ip'].decode('utf-8')
+                port_number = peer[b'port']
+                peers.append((ip_address, port_number))
+
+        else:
+            raise ValueError("Unrecognized format for 'peers' data")
+
         return peers

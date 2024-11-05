@@ -1,12 +1,14 @@
 import torrent
 import tracker_manager
 import peer_manager
+import asyncio
 
 class Client(object):
 
     def __init__(self, debug_mode):
         self.torrent_file = torrent.Torrent()
-        self.peer_list = [('5.199.233.7', 25080), ('85.94.27.159', 41061), ('87.117.62.221', 47308), ('94.233.249.179', 35890), 
+        self.peer_list = []
+        self.peer_list1 = [('5.199.233.7', 25080), ('85.94.27.159', 41061), ('87.117.62.221', 47308), ('94.233.249.179', 35890), 
                           ('104.28.154.252', 6881), ('112.9.223.239', 36776), ('185.33.229.26', 4123), ('185.177.189.11', 43263), 
                           ('186.92.7.113', 50482), ('193.0.149.210', 40024), ('220.202.152.7', 15000), ('223.196.173.48', 44130), 
                           ('223.77.125.248', 2586), ('213.196.99.174', 62625), ('213.87.195.97', 62346), ('213.24.133.85', 0), 
@@ -77,7 +79,7 @@ class Client(object):
                             ('49.143.68.109', 30378), ('46.242.15.57', 47910), ('46.242.14.61', 24420), ('46.197.32.169', 41963), 
                             ('46.138.17.94', 60972), ('41.230.77.215', 31932), ('38.252.48.111', 27773), ('37.212.62.213', 53835)]
         self.tracker_manager = tracker_manager.TrackerManager(self.torrent_file, True)
-        self.peer_manager = peer_manager.PeerManager()
+        self.peer_manager = peer_manager.PeerManager(True)
         self.debug_mode = debug_mode
     
     def _debug(self, msg):
@@ -86,17 +88,13 @@ class Client(object):
 
     def start(self, torrent_path):
         self.torrent_file = self.torrent_file.load_from_path(torrent_path)
-        #self.peer_list = self.tracker_manager.get_peers()
-        #self._debug(self.peer_list)
-        self.peer_manager.connect_peers(self.peer_list)
-
+        self.peer_list = self.tracker_manager.get_peers()
+        self._debug(self.peer_list)
+        #self.peer_manager.connect_peers(self.peer_list)
 
 
 if __name__ == '__main__':
-    test_path = ("D:\\Workspace\\torrent-client\\[LimeTorrents.lol]Age.of.Empires"
-                 ".II.Definitive.Edition..v101.102.42346.0.#107882.11.DLCs.Bonuse"
-                 "s..MULTi17..[FitGirl.Repack..Selective.Download.-.from.6.5.GB]."
-                 "torrent")
+    test_path = ("D:\\Workspace\\torrent-client\\ubuntu-22.04.5-desktop-amd64.iso.torrent")
 
     client = Client(True)
     client.start(test_path)
