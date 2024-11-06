@@ -1,4 +1,6 @@
 import asyncio 
+import struct
+import peer_manager
 
 class PeerCollection:
     def __init__(self):
@@ -60,7 +62,21 @@ class Peer(object):
 
         except asyncio.TimeoutError:
             self._debug(f"Timeout error {self.ip} {self.port}")
-            self.writer.close()
-            await self.writer.wait_closed()
+            await self.close_conn()
         except Exception as e:
             self._debug(f"{e} error")
+
+    async def send_bitfield(self):
+        bitfield = peer_manager.PeerManager.bitfield
+        msg_length = 1 + len(bitfield)
+        msg_id = 5
+
+        bitfield_msg = struct.pack(">Ib", msg_length, msg_id) + bitfield
+        
+        try:    
+            self.writer.write(bitfield_msg)
+            await self.writer.drain()
+        except Exception as e:
+            self._debug(f"error while trying to send bitfield {e} {self.ip} {self.port}")
+        
+        self._debug(f"bitfield message sent succesfully {self.ip} {self.port}")

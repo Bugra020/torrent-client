@@ -1,17 +1,21 @@
 import peer
-import asyncio
+import asyncio 
 
-class PeerManager():
-    def __init__(self, debug_mode, info_hash, peer_id):
+class PeerManager:
+    bitfield = None
+
+    def __init__(self, debug_mode, info_hash, peer_id, number_of_pieces):
         self.debug_mode = debug_mode
         self.peers = peer.PeerCollection()
         self.info_hash = info_hash
         self.peer_id = peer_id
+        self.number_of_pieces = number_of_pieces
+        PeerManager.bitfield = bytearray((self.number_of_pieces + 7) // 8)
 
     def _debug(self, msg):
         if self.debug_mode:
             print(msg)
-    
+
     async def connect_peers(self, peer_list):
         self.create_peers(peer_list)
         conn_tasks = []
@@ -24,11 +28,16 @@ class PeerManager():
             handshake_tasks.append(asyncio.create_task(peer.send_handshake()))
         await asyncio.gather(*handshake_tasks, return_exceptions=False)
 
-        await self.close_all_conn()
-
         #total_peer_num = self.peers.get_len()
         self.peers = [x for x in self.peers if x.healthy == False]
         #self._debug(f"{len(self.peers)}/{total_peer_num}")
+
+        bitfield_tasks = []
+        for peer in self.peers:
+            bitfield_tasks.append(asyncio.create_task(peer.send_bitfield()))
+        await asyncio.gather(*bitfield_tasks, return_exceptions=False)
+
+        await self.close_all_conn()
 
     async def close_all_conn(self):
         for peer in self.peers:

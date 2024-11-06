@@ -19,7 +19,8 @@ class Client(object):
         self.torrent_file = self.torrent_file.load_from_path(torrent_path)
         self.peer_list = self.tracker_manager.get_peers()
         self._debug(self.peer_list)
-        self.peer_manager = peer_manager.PeerManager(True, self.torrent_file.info_hash, self.torrent_file.peer_id)
+        self.peer_manager = peer_manager.PeerManager(True, self.torrent_file.info_hash, self.torrent_file.peer_id, 
+                                                     self.torrent_file.number_of_pieces)
         asyncio.run(self.peer_manager.connect_peers(self.peer_list))
 
 
