@@ -3,6 +3,7 @@ import asyncio
 
 class PeerManager:
     bitfield = None
+    available_pieces = set()
 
     def __init__(self, debug_mode, info_hash, peer_id, number_of_pieces):
         self.debug_mode = debug_mode
@@ -45,4 +46,4 @@ class PeerManager:
     
     def create_peers(self, peer_list):
         for peer_data in peer_list:
-            self.peers.add_peer(peer.Peer(ip=peer_data[0], port=peer_data[1], info_hash=self.info_hash, peer_id=self.peer_id))
+            self.peers.add_peer(peer.Peer(peer_data[0], peer_data[1], self.info_hash, self.peer_id, self.number_of_pieces))
