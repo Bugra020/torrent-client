@@ -21,7 +21,7 @@ class Client(object):
         self._debug(self.peer_list)
         self.peer_manager = peer_manager.PeerManager(True, self.torrent_file.info_hash, self.torrent_file.peer_id, 
                                                      self.torrent_file.number_of_pieces)
-        asyncio.run(self.peer_manager.connect_peers(self.peer_list))
+        asyncio.run(self.peer_manager.start(self.peer_list))
 
 
 if __name__ == '__main__':

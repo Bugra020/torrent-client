@@ -35,7 +35,7 @@ class MessageDecoder:
                 pass
             else:
                 raise MessageDecoderError("invalid message id error")
-        
+
         return msg_id
 
         

@@ -17,7 +17,7 @@ class PeerManager:
         if self.debug_mode:
             print(msg)
 
-    async def connect_peers(self, peer_list):
+    async def start(self, peer_list):
         self.create_peers(peer_list)
         conn_tasks = []
         for peer in self.peers:

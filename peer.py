@@ -27,8 +27,12 @@ class Peer(object):
         
         self.has_handshaked = False
         self.healthy = False
-        self.interested = False
-        self.choked = False 
+        
+        self.is_choked = True
+        self.is_interested = False
+
+        self.choked_client = True
+        self.client_interested = False
        
         self.bitfield = [False] * self.number_of_pieces 
 
@@ -82,6 +86,8 @@ class Peer(object):
 
             if len(response) == 68 and response[28:48] == self.info_hash:
                 self._debug(f"Handshake successful! {self.ip} {self.port}")
+                self.is_interested = True
+                self.client_interested = True
             else:
                 self._debug(f"Handshake failed or mismatched info hash. {self.ip} {self.port}")
                 self.healthy = False
@@ -110,50 +116,74 @@ class Peer(object):
         
         self._debug(f"bitfield message sent succesfully {self.ip} {self.port}")
 
-    async def send_msg(self, msg):
-        try:
-            self.writer.write(msg)
-            await self.writer.drain()
-        except Exception as e:
-            self._debug(f"error while sending msg {self.ip} {self.port}")
-
     async def handle_msgs(self, msg_id, msg):
         match msg_id:
             case 0:
-                pass
+                await self.handle_choke()
             case 1:
-                pass
+                await self.handle_unChoke()
             case 2:
                await self.handle_interested() 
             case 3:
-                pass
+                await self.handle_notInterested() 
             case 4:
-                pass
+                await self.handle_have()
             case 5:
                await self.handle_bitfield(msg) 
             case 6:
+                #await self.handle_request()
                 pass
             case 7:
+                #await self.handle_piece()
                 pass
             case 8:
+                #await self.handle_cancel()
                 pass
+            case 9:
+                #await self.handle_port()
+                pass
+    
+    async def handle_choke(self):
+        self._debug(f"Received 'Choke' message from peer {self.ip}")
+        self.choked_client = True
+        # await self.cancel_pending_requests()
+
+    async def handle_unChoke(self):
+        self._debug(f"Received 'UnChoke' message from peer {self.ip}")
+        self.choked_client = False
+        # await self.send_piece_requests()
+        
 
     async def handle_interested(self):
-        self.interested = True
+        self.is_interested = True
         self._debug(f"{self.ip} is interested")
 
         # unchoking algorithm here
+    
+    async def handle_notInterested(self):
+        self._debug(f"Received 'Not Interested' message from peer {self.ip}")
+
+        # Update the peer state to reflect that the peer is not interested
+        self.is_interested = False
+
+        # await self.cancel_pending_requests()
+
+    
+    async def handle_have(self):
+        pass
 
     async def handle_bitfield(self, msg):
+        payload = msg[5:]
         expected_length = math.ceil(self.number_of_pieces/ 8)
-        if len(msg)+8 < expected_length:
-            self._debug(f"Invalid Bitfield length: {len(msg)} bytes. Expected: {expected_length} bytes.")
+
+        if len(payload) < expected_length:
+            self._debug(f"Invalid Bitfield length: {len(payload)} bytes. Expected: {expected_length} bytes.")
             raise ValueError("Invalid Bitfield message length")
         
         total_bits = self.number_of_pieces
         current_bit_index = 0
 
-        for byte in msg:
+        for byte in payload:
             for i in range(8):
                 if current_bit_index < total_bits:
                     bit = (byte >> (7 - i)) & 1
@@ -164,8 +194,5 @@ class Peer(object):
 
         for index, bit in enumerate(self.bitfield):
             if bit:
-                self.add_available_pieces(index)
-
-    def add_available_pieces(self, index):
-        peer_manager.PeerManager.available_pieces.add(index)
-        self._debug(f"added available piece at index {index}")
+                peer_manager.PeerManager.available_pieces.add(index)
+                #self._debug(f"added available piece at index {index}")
