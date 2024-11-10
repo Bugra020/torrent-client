@@ -34,7 +34,8 @@ class Peer(object):
         self.choked_client = True
         self.client_interested = False
        
-        self.bitfield = [False] * self.number_of_pieces 
+        self.bitfield = [False] * self.number_of_pieces
+
 
         self.writer = None
         self.reader = None
@@ -127,7 +128,7 @@ class Peer(object):
             case 3:
                 await self.handle_notInterested() 
             case 4:
-                await self.handle_have()
+                await self.handle_have(msg)
             case 5:
                await self.handle_bitfield(msg) 
             case 6:
@@ -169,8 +170,13 @@ class Peer(object):
         # await self.cancel_pending_requests()
 
     
-    async def handle_have(self):
-        pass
+    async def handle_have(self, msg):
+        piece_index = int.from_bytes(msg[1:5], byteorder='big')
+        
+        self.bitfield[piece_index] = True
+        
+        self._debug(f"added available piece at index {piece_index} from HAVE message")
+        peer_manager.PeerManager.available_pieces.add(piece_index)
 
     async def handle_bitfield(self, msg):
         payload = msg[5:]
